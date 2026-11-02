@@ -77,7 +77,6 @@ async def handle_status(message: Message):
         f"• **Движок распознавания:** {config.stT_provider.upper()} ({config.groq_model})\n"
         "• **Язык распознавания:** Русский (RU)\n"
         "• **Поддержка групп:** 🟢 Включена\n"
-        "• **Режим приватности:** 🔒 Включен (без сохранения сообщений)\n"
         "• **Статус:** 🟢 Онлайн и готов к работе"
     )
     await message.answer(status_text, parse_mode="Markdown")
