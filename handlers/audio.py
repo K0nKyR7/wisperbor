@@ -48,7 +48,6 @@ async def process_media_transcription(
     suffix: str,
     media_title: str,
 ):
-    # В группах всегда отвечаем на конкретное сообщение (reply)
     status_msg = await message.reply("⏳ Скачиваю и расшифровываю...")
     await bot.send_chat_action(chat_id=message.chat.id, action=ChatAction.TYPING)
 
@@ -160,7 +159,6 @@ async def callback_delete(callback: CallbackQuery, bot: Bot):
     owner_id_str = callback.data.split(":")[1] if ":" in callback.data else "0"
     owner_id = int(owner_id_str) if owner_id_str.isdigit() else 0
 
-    # Если действие в группе: удалять может автор или админ чата
     if callback.message.chat.type in (ChatType.GROUP, ChatType.SUPERGROUP):
         user_id = callback.from_user.id
         if owner_id != 0 and user_id != owner_id:
@@ -237,23 +235,3 @@ async def callback_tasks(callback: CallbackQuery, bot: Bot):
     except Exception as e:
         logger.exception("Ошибка при поиске задач:")
         await wait_msg.edit_text(f"❌ Ошибка при извлечении задач:\n`{str(e)}`", parse_mode="Markdown")
-
-
-@router.callback_query(F.data == "btn_translate")
-async def callback_translate(callback: CallbackQuery, bot: Bot):
-    """Переводит расшифровку на английский язык."""
-    target_text = extract_pure_text(callback.message)
-    if not target_text:
-        await callback.answer("Нет текста для анализа.", show_alert=True)
-        return
-
-    await callback.answer("Перевожу на английский...")
-    await bot.send_chat_action(chat_id=callback.message.chat.id, action=ChatAction.TYPING)
-    wait_msg = await callback.message.reply("🌐 Перевожу на английский язык...")
-
-    try:
-        translated = await transcriber.translate_text(target_text, target_lang="английский")
-        await wait_msg.edit_text(f"🌐 **English Translation:**\n\n{translated}", parse_mode="Markdown")
-    except Exception as e:
-        logger.exception("Ошибка при переводе:")
-        await wait_msg.edit_text(f"❌ Ошибка при переводе:\n`{str(e)}`", parse_mode="Markdown")

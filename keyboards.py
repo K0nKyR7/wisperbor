@@ -39,7 +39,7 @@ def get_start_inline_keyboard() -> InlineKeyboardMarkup:
 
 
 def get_transcription_inline_keyboard(owner_id: int = 0) -> InlineKeyboardMarkup:
-    """Inline-кнопки под результатом расшифровки аудио/видео."""
+    """Inline-кнопки под результатом расшифровки аудио/видео (аккуратная сетка 2x2)."""
     buttons = [
         [
             InlineKeyboardButton(text="📝 Выжимка", callback_data="btn_summarize"),
@@ -47,9 +47,6 @@ def get_transcription_inline_keyboard(owner_id: int = 0) -> InlineKeyboardMarkup
         ],
         [
             InlineKeyboardButton(text="✅ Задачи / To-Do", callback_data="btn_tasks"),
-            InlineKeyboardButton(text="🌐 На английский", callback_data="btn_translate"),
-        ],
-        [
             InlineKeyboardButton(text="🗑 Удалить", callback_data=f"btn_del:{owner_id}"),
         ],
     ]

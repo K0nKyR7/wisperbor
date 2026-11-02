@@ -110,13 +110,5 @@ class TranscriberService:
         )
         return await self._generate_text(prompt, f"Текст для поиска задач:\n\n{text}")
 
-    async def translate_text(self, text: str, target_lang: str = "английский") -> str:
-        """Переводит текст на указанный язык с сохранением контекста."""
-        prompt = (
-            f"Ты профессиональный переводчик. Переведи текст расшифровки голосового сообщения на {target_lang} язык. "
-            "Перевод должен быть естественным, живым и точным по смыслу. Выведи только готовый перевод без комментариев."
-        )
-        return await self._generate_text(prompt, f"Текст для перевода:\n\n{text}")
-
 
 transcriber = TranscriberService()
