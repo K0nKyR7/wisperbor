@@ -35,11 +35,11 @@ def get_start_inline_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-def get_transcription_inline_keyboard() -> InlineKeyboardMarkup:
+def get_transcription_inline_keyboard(record_id: int = 0) -> InlineKeyboardMarkup:
     """Inline-кнопки под результатом расшифровки аудио/видео."""
     buttons = [
         [
-            InlineKeyboardButton(text="📝 Сделать выжимку (Саммари)", callback_data="btn_summarize"),
+            InlineKeyboardButton(text="📝 Сделать выжимку (Саммари)", callback_data=f"btn_sum:{record_id}"),
             InlineKeyboardButton(text="🗑 Удалить", callback_data="btn_delete"),
         ],
     ]

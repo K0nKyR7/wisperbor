@@ -5,6 +5,7 @@ from aiogram import Bot, F, Router
 from aiogram.enums import ChatAction
 from aiogram.types import Message, CallbackQuery
 from services.transcriber import transcriber
+from services.database import log_transcription, update_summary
 from keyboards import get_transcription_inline_keyboard
 
 logger = logging.getLogger(__name__)
@@ -34,7 +35,14 @@ def split_text(text: str, max_chars: int = 4000) -> list[str]:
     return chunks
 
 
-async def process_media_transcription(message: Message, bot: Bot, file_id: str, suffix: str, media_title: str):
+async def process_media_transcription(
+    message: Message,
+    bot: Bot,
+    file_id: str,
+    suffix: str,
+    media_title: str,
+    duration: int | None = None,
+):
     status_msg = await message.reply("⏳ Скачиваю и расшифровываю...")
     await bot.send_chat_action(chat_id=message.chat.id, action=ChatAction.TYPING)
 
@@ -62,13 +70,29 @@ async def process_media_transcription(message: Message, bot: Bot, file_id: str, 
             await status_msg.edit_text("🤷 В сообщении не удалось распознать разборчивую русскую речь.")
             return
 
+        # Сохраняем расшифровку в базу данных SQLite
+        user = message.from_user
+        user_id = user.id if user else message.chat.id
+        username = f"@{user.username}" if user and user.username else None
+        full_name = user.full_name if user else None
+
+        record_id = await log_transcription(
+            user_id=user_id,
+            username=username,
+            full_name=full_name,
+            media_type=media_title,
+            duration=duration,
+            file_size=tg_file.file_size,
+            recognized_text=recognized_text,
+        )
+
         header = f"📝 **Расшифровка ({media_title}):**\n\n"
         full_text = header + recognized_text
         chunks = split_text(full_text)
 
-        keyboard = get_transcription_inline_keyboard()
+        keyboard = get_transcription_inline_keyboard(record_id=record_id)
 
-        # Первую часть выводим с кнопками (или последнюю, если частей несколько)
+        # Выводим сообщение с кнопками
         if len(chunks) == 1:
             await status_msg.edit_text(chunks[0], parse_mode="Markdown", reply_markup=keyboard)
         else:
@@ -99,6 +123,7 @@ async def handle_voice(message: Message, bot: Bot):
         file_id=message.voice.file_id,
         suffix=".ogg",
         media_title="Голосовое сообщение",
+        duration=message.voice.duration,
     )
 
 
@@ -110,6 +135,7 @@ async def handle_video_note(message: Message, bot: Bot):
         file_id=message.video_note.file_id,
         suffix=".mp4",
         media_title="Кружочек",
+        duration=message.video_note.duration,
     )
 
 
@@ -126,6 +152,7 @@ async def handle_audio(message: Message, bot: Bot):
         file_id=message.audio.file_id,
         suffix=ext.lower(),
         media_title="Аудиозапись",
+        duration=message.audio.duration,
     )
 
 
@@ -137,6 +164,7 @@ async def handle_video(message: Message, bot: Bot):
         file_id=message.video.file_id,
         suffix=".mp4",
         media_title="Видео",
+        duration=message.video.duration,
     )
 
 
@@ -149,10 +177,18 @@ async def callback_delete(callback: CallbackQuery):
         await callback.answer("Не удалось удалить сообщение.", show_alert=True)
 
 
-@router.callback_query(F.data == "btn_summarize")
+@router.callback_query(F.data.startswith("btn_sum"))
 async def callback_summarize(callback: CallbackQuery, bot: Bot):
-    """Делает краткую выжимку (саммари) расшифрованного текста."""
+    """Делает краткую выжимку (саммари) расшифрованного текста и обновляет БД."""
     message_text = callback.message.text or callback.message.caption or ""
+
+    # Извлекаем record_id, если он передан (например btn_sum:12)
+    record_id = 0
+    if ":" in callback.data:
+        try:
+            record_id = int(callback.data.split(":")[1])
+        except ValueError:
+            record_id = 0
 
     # Убираем заголовок "Расшифровка (...):", если он есть
     lines = message_text.split("\n\n", 1)
@@ -169,6 +205,11 @@ async def callback_summarize(callback: CallbackQuery, bot: Bot):
 
     try:
         summary = await transcriber.summarize(target_text)
+
+        # Сохраняем выжимку в базу данных
+        if record_id > 0:
+            await update_summary(record_id, summary)
+
         formatted_summary = f"📋 **Краткая выжимка (Саммари):**\n\n{summary}"
         await wait_msg.edit_text(formatted_summary, parse_mode="Markdown")
     except Exception as e:
