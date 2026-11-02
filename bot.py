@@ -7,7 +7,6 @@ from aiogram.enums import ParseMode
 
 from config import config
 from handlers import common, audio
-from services.database import init_db
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,9 +25,6 @@ async def main():
     # Регистрация роутеров
     dp.include_router(common.router)
     dp.include_router(audio.router)
-
-    # Инициализация базы данных SQLite
-    await init_db()
 
     logging.info(f"Бот запускается! Провайдер STT: {config.stT_provider.upper()}")
     await bot.delete_webhook(drop_pending_updates=True)
