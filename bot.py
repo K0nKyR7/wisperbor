@@ -6,6 +6,12 @@ from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.types import (
+    BotCommand,
+    BotCommandScopeAllGroupChats,
+    BotCommandScopeAllPrivateChats,
+    BotCommandScopeDefault,
+)
 
 from config import config
 from handlers import common, audio
@@ -45,6 +51,41 @@ async def start_web_server():
         return None
 
 
+async def setup_commands(bot: Bot):
+    """Регистрирует подсказки команд в меню Telegram при вводе '/'."""
+    try:
+        # Меню команд для групповых чатов
+        await bot.set_my_commands(
+            commands=[
+                BotCommand(command="t", description="Расшифровать (в ответ на войс/кружочек)"),
+                BotCommand(command="help", description="Инструкция по боту"),
+            ],
+            scope=BotCommandScopeAllGroupChats(),
+        )
+
+        # Меню команд для личных сообщений
+        await bot.set_my_commands(
+            commands=[
+                BotCommand(command="start", description="Запустить бота"),
+                BotCommand(command="help", description="Инструкция и возможности"),
+            ],
+            scope=BotCommandScopeAllPrivateChats(),
+        )
+
+        # Дефолтные команды для всех контекстов
+        await bot.set_my_commands(
+            commands=[
+                BotCommand(command="t", description="Расшифровать (в ответ на войс)"),
+                BotCommand(command="start", description="Старт"),
+                BotCommand(command="help", description="Помощь"),
+            ],
+            scope=BotCommandScopeDefault(),
+        )
+        logging.info("Подсказки команд Telegram успешно зарегистрированы!")
+    except Exception as e:
+        logging.warning(f"Не удалось зарегистрировать подсказки команд: {e}")
+
+
 async def main():
     bot = Bot(
         token=config.bot_token,
@@ -55,6 +96,9 @@ async def main():
     # Регистрация роутеров
     dp.include_router(common.router)
     dp.include_router(audio.router)
+
+    # Регистрация команд при вводе '/'
+    await setup_commands(bot)
 
     # Запуск фонового веб-сервера для Render
     web_runner = await start_web_server()
